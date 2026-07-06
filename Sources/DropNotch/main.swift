@@ -1,4 +1,7 @@
 import AppKit
 import DropNotchCore
 
-print("DropNotch \(DropNotchInfo.version)")
+let app = NSApplication.shared
+let delegate = AppDelegate()
+app.delegate = delegate
+app.run()
