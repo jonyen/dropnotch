@@ -68,6 +68,11 @@ private struct IconButton: View {
     }
 }
 
+private final class NonKeyPanel: NSPanel {
+    override var canBecomeKey: Bool { false }
+    override var canBecomeMain: Bool { false }
+}
+
 @MainActor
 public final class NotchPanelController {
     private let panel: NSPanel
@@ -83,7 +88,7 @@ public final class NotchPanelController {
     }
 
     public init() {
-        panel = NSPanel(
+        panel = NonKeyPanel(
             contentRect: .zero,
             styleMask: [.borderless, .nonactivatingPanel],
             backing: .buffered,
