@@ -10,7 +10,7 @@ public final class AXItemSource {
     public func items() -> [MenuBarItemInfo] {
         let height = CGDisplayBounds(CGMainDisplayID()).height
         var result: [MenuBarItemInfo] = []
-        for app in NSWorkspace.shared.runningApplications where app.activationPolicy != .prohibited || app.bundleIdentifier != nil {
+        for app in NSWorkspace.shared.runningApplications where app.activationPolicy != .prohibited && app.bundleIdentifier != nil {
             let pid = app.processIdentifier
             guard pid > 0 else { continue }
             for element in extrasChildren(pid: pid) {
@@ -46,6 +46,7 @@ public final class AXItemSource {
 
     private func extrasChildren(pid: pid_t) -> [AXUIElement] {
         let app = AXUIElementCreateApplication(pid)
+        AXUIElementSetMessagingTimeout(app, 0.1)
         var extrasRef: CFTypeRef?
         guard AXUIElementCopyAttributeValue(app, "AXExtrasMenuBar" as CFString, &extrasRef) == .success,
               let extras = extrasRef, CFGetTypeID(extras) == AXUIElementGetTypeID()
