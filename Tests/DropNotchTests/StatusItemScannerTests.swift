@@ -75,6 +75,29 @@ final class StatusItemScannerTests: XCTestCase {
         XCTAssertEqual(items.map(\.ownerName), ["A", "B"])
     }
 
+    func testWindowOutsideMenuBarBandExcluded() {
+        // Popover/panel windows share the status window level but live
+        // mid-screen; a band filter must drop them.
+        let band = CGRect(x: 0, y: 2196, width: 3456, height: 38)
+        let popover = MenuBarItemInfo(
+            windowID: 7, ownerPID: 100, ownerName: "WeatherMenu",
+            frame: CGRect(x: 3400, y: 900, width: 332, height: 1200), title: nil)
+        let realHidden = item("Docker", x: 1600)
+        let items = StatusItemScanner.hiddenItems(
+            windows: [popover, realHidden], notch: notch, screenFrame: screen, ownPID: ownPID,
+            menuBarBand: band)
+        XCTAssertEqual(items, [realHidden])
+    }
+
+    func testNilBandKeepsOldBehavior() {
+        let popover = MenuBarItemInfo(
+            windowID: 7, ownerPID: 100, ownerName: "WeatherMenu",
+            frame: CGRect(x: 3400, y: 900, width: 332, height: 1200), title: nil)
+        let items = StatusItemScanner.hiddenItems(
+            windows: [popover], notch: notch, screenFrame: screen, ownPID: ownPID)
+        XCTAssertEqual(items, [popover]) // maxX 3732 > 3456: old rule flags it
+    }
+
     func testExternalDisplayItemExcludedWhenOtherScreensProvided() {
         let external = CGRect(x: 3456, y: 0, width: 2560, height: 1440)
         let externalItem = MenuBarItemInfo(

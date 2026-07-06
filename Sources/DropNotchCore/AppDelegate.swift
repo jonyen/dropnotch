@@ -1,26 +1,33 @@
 import AppKit
+import os.log
 
 public final class AppDelegate: NSObject, NSApplicationDelegate {
     private var coordinator: AppCoordinator?
     private var statusMenu: StatusMenuController?
     private var onboardingWindow: NSWindow?
+    private let log = Logger(subsystem: DropNotchInfo.logSubsystem, category: "app")
 
     public override init() { super.init() }
 
     public func applicationDidFinishLaunching(_ notification: Notification) {
+        log.info("didFinishLaunching: screenRecording=\(Permissions.screenRecordingGranted, privacy: .public) accessibility=\(Permissions.accessibilityGranted, privacy: .public)")
         let coordinator = AppCoordinator()
         self.coordinator = coordinator
         statusMenu = StatusMenuController(coordinator: coordinator)
+        log.info("status item created")
 
         if Permissions.allGranted {
+            log.info("permissions granted, starting coordinator")
             coordinator.start()
         } else {
+            log.info("permissions missing, showing onboarding")
             showOnboarding()
         }
     }
 
     public func applicationDidBecomeActive(_ notification: Notification) {
         // Re-check after the user visits System Settings.
+        log.info("didBecomeActive: allGranted=\(Permissions.allGranted, privacy: .public)")
         if Permissions.allGranted, let coordinator {
             onboardingWindow?.close()
             onboardingWindow = nil
@@ -45,6 +52,9 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             styleMask: [.titled, .closable],
             backing: .buffered, defer: false)
         window.title = "DropNotch Permissions"
+        // ARC owns this window via `onboardingWindow`; the AppKit default
+        // (release-when-closed) would double-release it on close.
+        window.isReleasedWhenClosed = false
         window.center()
 
         let text = NSTextField(wrappingLabelWithString: alertText)

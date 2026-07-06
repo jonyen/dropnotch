@@ -130,21 +130,38 @@ public final class AppCoordinator {
 
     private func scanHiddenItems(notch: CGRect) -> [MenuBarItemInfo] {
         guard let screen = builtInScreen else { return [] }
-        let ownPID = ProcessInfo.processInfo.processIdentifier
-        let windows = windowList.menuBarItemWindows()
+        let ownPID = pid_t(ProcessInfo.processInfo.processIdentifier)
         let otherScreens = NSScreen.screens.filter { $0 != screen }.map(\.frame)
-        var hidden = StatusItemScanner.hiddenItems(
-            windows: windows, notch: notch, screenFrame: screen.frame, ownPID: pid_t(ownPID),
-            otherScreens: otherScreens)
+        let menuBarBand = CGRect(x: screen.frame.minX, y: notch.minY,
+                                 width: screen.frame.width, height: notch.height)
+        let windows = windowList.menuBarItemWindows()
 
-        // Union in AX-only items: apps whose status item window wasn't enumerable.
-        let knownPIDs = Set(windows.map(\.ownerPID))
-        let axHidden = StatusItemScanner.hiddenItems(
-            windows: axSource.items().filter { !knownPIDs.contains($0.ownerPID) },
-            notch: notch, screenFrame: screen.frame, ownPID: pid_t(ownPID),
-            otherScreens: otherScreens)
-        hidden.append(contentsOf: axHidden)
-        return hidden.sorted { $0.frame.minX < $1.frame.minX }
+        // AX is the authoritative source when we're trusted: it lists each
+        // real status item exactly once at its current position. CGWindowList
+        // also contains stale layout copies and popover windows (observed on
+        // macOS 26), which show items the user can already see.
+        let result: [MenuBarItemInfo]
+        if AXIsProcessTrusted() {
+            let axHidden = StatusItemScanner.hiddenItems(
+                windows: axSource.items(), notch: notch, screenFrame: screen.frame,
+                ownPID: ownPID, otherScreens: otherScreens, menuBarBand: menuBarBand)
+            // Borrow window IDs from CGWindowList (matched by owner + overlap)
+            // so the capturer can grab live pixels.
+            result = axHidden.map { item in
+                let match = windows.first {
+                    $0.ownerPID == item.ownerPID && $0.frame.intersects(item.frame)
+                }
+                return item.withWindowID(match?.windowID)
+            }
+        } else {
+            result = StatusItemScanner.hiddenItems(
+                windows: windows, notch: notch, screenFrame: screen.frame,
+                ownPID: ownPID, otherScreens: otherScreens, menuBarBand: menuBarBand)
+        }
+        for item in result {
+            log.debug("hidden item: \(item.ownerName, privacy: .public) pid=\(item.ownerPID) windowID=\(item.windowID.map(String.init) ?? "ax", privacy: .public) frame=\(String(describing: item.frame), privacy: .public)")
+        }
+        return result
     }
 
     private func hidePanel() {

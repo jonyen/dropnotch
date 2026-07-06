@@ -20,7 +20,8 @@ public final class AXItemSource {
                     ownerPID: pid,
                     ownerName: app.localizedName ?? "?",
                     frame: NotchGeometry.cocoaRect(fromCGRect: cgFrame, mainDisplayHeight: height),
-                    title: title(of: element)))
+                    title: title(of: element),
+                    tooltip: stringAttribute(kAXHelpAttribute, of: element)))
             }
         }
         return result
@@ -77,9 +78,14 @@ public final class AXItemSource {
     }
 
     private func title(of element: AXUIElement) -> String? {
+        stringAttribute(kAXTitleAttribute, of: element)
+    }
+
+    private func stringAttribute(_ attribute: String, of element: AXUIElement) -> String? {
         var ref: CFTypeRef?
-        guard AXUIElementCopyAttributeValue(element, kAXTitleAttribute as CFString, &ref) == .success else { return nil }
-        return ref as? String
+        guard AXUIElementCopyAttributeValue(element, attribute as CFString, &ref) == .success else { return nil }
+        let value = ref as? String
+        return (value?.isEmpty ?? true) ? nil : value
     }
 
     private func distance(of element: AXUIElement, toCocoaX x: CGFloat, mainDisplayHeight: CGFloat) -> CGFloat {
