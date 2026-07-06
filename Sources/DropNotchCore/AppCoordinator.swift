@@ -37,6 +37,7 @@ public final class AppCoordinator {
     }
 
     public func start() {
+        guard globalMouseMonitor == nil else { return }
         // Global monitor misses events over our own panel; local monitor covers those.
         globalMouseMonitor = NSEvent.addGlobalMonitorForEvents(matching: .mouseMoved) { [weak self] event in
             Task { @MainActor in self?.handleMouseMoved() }
