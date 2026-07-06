@@ -64,6 +64,9 @@ public final class AXItemSource {
         guard AXUIElementCopyAttributeValue(element, kAXPositionAttribute as CFString, &posRef) == .success,
               AXUIElementCopyAttributeValue(element, kAXSizeAttribute as CFString, &sizeRef) == .success
         else { return nil }
+        guard let posRef = posRef, CFGetTypeID(posRef) == AXValueGetTypeID(),
+              let sizeRef = sizeRef, CFGetTypeID(sizeRef) == AXValueGetTypeID()
+        else { return nil }
         var point = CGPoint.zero
         var size = CGSize.zero
         guard AXValueGetValue(posRef as! AXValue, .cgPoint, &point),
