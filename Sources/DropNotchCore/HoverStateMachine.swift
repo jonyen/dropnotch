@@ -25,6 +25,12 @@ public final class HoverStateMachine {
         return false
     }
 
+    /// Force the machine back to idle, e.g. when the panel is hidden
+    /// externally (pause/stop) and any prior show/grace state is stale.
+    public func reset() {
+        state = .idle
+    }
+
     public func mouseMoved(to point: CGPoint, notch: CGRect, panel: CGRect?, now: Date) -> HoverAction {
         let insideNotch = notch.contains(point)
         let insidePanel = panel?.contains(point) ?? false

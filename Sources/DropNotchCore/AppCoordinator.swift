@@ -148,6 +148,7 @@ public final class AppCoordinator {
     }
 
     private func hidePanel() {
+        stateMachine.reset()
         graceTimer?.invalidate()
         refreshTimer?.invalidate()
         graceTimer = nil

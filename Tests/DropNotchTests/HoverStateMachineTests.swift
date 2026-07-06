@@ -61,4 +61,16 @@ final class HoverStateMachineTests: XCTestCase {
         XCTAssertEqual(action, .hide)
         XCTAssertTrue(sm.isIdle)
     }
+
+    func testResetReturnsToIdleAndAllowsReshow() {
+        let sm = makeSM()
+        _ = sm.mouseMoved(to: CGPoint(x: 1600, y: 2210), notch: notch, panel: nil, now: t0)
+        XCTAssertFalse(sm.isIdle)
+
+        sm.reset()
+        XCTAssertTrue(sm.isIdle)
+
+        let action = sm.mouseMoved(to: CGPoint(x: 1600, y: 2210), notch: notch, panel: nil, now: t0)
+        XCTAssertEqual(action, .show)
+    }
 }
