@@ -74,7 +74,10 @@ public final class AppCoordinator {
 
     private func handleMouseMoved() {
         guard !isPaused, let notch = notchRect else { return }
-        if stateMachine.isIdle && !windowList.isMenuBarVisible() { return }
+        if stateMachine.isIdle {
+            guard notch.contains(NSEvent.mouseLocation) else { return }
+            guard windowList.isMenuBarVisible() else { return }
+        }
         let action = stateMachine.mouseMoved(
             to: NSEvent.mouseLocation,
             notch: notch,
