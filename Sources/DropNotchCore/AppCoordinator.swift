@@ -132,14 +132,17 @@ public final class AppCoordinator {
         guard let screen = builtInScreen else { return [] }
         let ownPID = ProcessInfo.processInfo.processIdentifier
         let windows = windowList.menuBarItemWindows()
+        let otherScreens = NSScreen.screens.filter { $0 != screen }.map(\.frame)
         var hidden = StatusItemScanner.hiddenItems(
-            windows: windows, notch: notch, screenFrame: screen.frame, ownPID: pid_t(ownPID))
+            windows: windows, notch: notch, screenFrame: screen.frame, ownPID: pid_t(ownPID),
+            otherScreens: otherScreens)
 
         // Union in AX-only items: apps whose status item window wasn't enumerable.
         let knownPIDs = Set(windows.map(\.ownerPID))
         let axHidden = StatusItemScanner.hiddenItems(
             windows: axSource.items().filter { !knownPIDs.contains($0.ownerPID) },
-            notch: notch, screenFrame: screen.frame, ownPID: pid_t(ownPID))
+            notch: notch, screenFrame: screen.frame, ownPID: pid_t(ownPID),
+            otherScreens: otherScreens)
         hidden.append(contentsOf: axHidden)
         return hidden.sorted { $0.frame.minX < $1.frame.minX }
     }

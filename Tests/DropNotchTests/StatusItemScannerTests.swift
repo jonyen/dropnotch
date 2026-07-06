@@ -74,4 +74,25 @@ final class StatusItemScannerTests: XCTestCase {
             windows: [a, b], notch: notch, screenFrame: screen, ownPID: ownPID)
         XCTAssertEqual(items.map(\.ownerName), ["A", "B"])
     }
+
+    func testExternalDisplayItemExcludedWhenOtherScreensProvided() {
+        let external = CGRect(x: 3456, y: 0, width: 2560, height: 1440)
+        let externalItem = MenuBarItemInfo(
+            windowID: 1, ownerPID: 100, ownerName: "ExternalApp",
+            frame: CGRect(x: 3500, y: 1402, width: 40, height: 38), title: nil)
+        let items = StatusItemScanner.hiddenItems(
+            windows: [externalItem], notch: notch, screenFrame: screen, ownPID: ownPID,
+            otherScreens: [external])
+        XCTAssertTrue(items.isEmpty)
+    }
+
+    func testExternalDisplayItemIncludedWithoutOtherScreens() {
+        let externalItem = MenuBarItemInfo(
+            windowID: 1, ownerPID: 100, ownerName: "ExternalApp",
+            frame: CGRect(x: 3500, y: 1402, width: 40, height: 38), title: nil)
+        let items = StatusItemScanner.hiddenItems(
+            windows: [externalItem], notch: notch, screenFrame: screen, ownPID: ownPID,
+            otherScreens: [])
+        XCTAssertEqual(items, [externalItem])
+    }
 }

@@ -9,11 +9,13 @@ public enum StatusItemScanner {
         windows: [MenuBarItemInfo],
         notch: CGRect?,
         screenFrame: CGRect,
-        ownPID: pid_t
+        ownPID: pid_t,
+        otherScreens: [CGRect] = []
     ) -> [MenuBarItemInfo] {
         windows
             .filter { $0.ownerPID != ownPID }
             .filter { !excludedOwners.contains($0.ownerName) }
+            .filter { item in !otherScreens.contains { $0.intersects(item.frame) } }
             .filter { isHidden($0.frame, notch: notch, screenFrame: screenFrame) }
             .sorted { $0.frame.minX < $1.frame.minX }
     }
