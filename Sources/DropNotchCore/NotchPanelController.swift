@@ -170,6 +170,8 @@ public final class NotchPanelController {
     private var targetFrame: CGRect = .zero
     /// True while the slide-up hide animation is in flight.
     private var isHiding = false
+    /// Carries the sampled menu bar color between material and icons.
+    private var tintView: NSView?
 
     public var onItemClick: ((MenuBarItemInfo) -> Void)? {
         get { model.onClick }
@@ -231,16 +233,28 @@ public final class NotchPanelController {
         effect.alphaValue = PanelStyle.materialAlpha
         effect.translatesAutoresizingMaskIntoConstraints = false
 
+        // Tint layer between the material and the icons: carries the sampled
+        // menu bar color so the panel matches the real menu bar's hue.
+        let tint = NSView()
+        tint.wantsLayer = true
+        tint.translatesAutoresizingMaskIntoConstraints = false
+        tintView = tint
+
         let hosting = FirstMouseHostingView(rootView: NotchPanelView(model: model))
         hosting.translatesAutoresizingMaskIntoConstraints = false
 
         container.addSubview(effect)
+        container.addSubview(tint)
         container.addSubview(hosting)
         NSLayoutConstraint.activate([
             effect.leadingAnchor.constraint(equalTo: container.leadingAnchor),
             effect.trailingAnchor.constraint(equalTo: container.trailingAnchor),
             effect.topAnchor.constraint(equalTo: container.topAnchor),
             effect.bottomAnchor.constraint(equalTo: container.bottomAnchor),
+            tint.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            tint.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+            tint.topAnchor.constraint(equalTo: container.topAnchor),
+            tint.bottomAnchor.constraint(equalTo: container.bottomAnchor),
             hosting.leadingAnchor.constraint(equalTo: container.leadingAnchor),
             hosting.trailingAnchor.constraint(equalTo: container.trailingAnchor),
             hosting.topAnchor.constraint(equalTo: container.topAnchor),
@@ -289,6 +303,11 @@ public final class NotchPanelController {
             context.timingFunction = CAMediaTimingFunction(name: .easeOut)
             panel.animator().setFrame(finalFrame, display: true)
         }
+    }
+
+    /// Apply the sampled menu bar color; nil clears back to material-only.
+    public func setTint(_ color: NSColor?) {
+        tintView?.layer?.backgroundColor = color?.withAlphaComponent(0.85).cgColor
     }
 
     public func hide(animated: Bool = true) {

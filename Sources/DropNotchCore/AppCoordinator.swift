@@ -11,6 +11,7 @@ public final class AppCoordinator {
     private let capturer: IconCapturing
     private let panelController = NotchPanelController()
     private let clickForwarder: ClickForwarder
+    private let colorSampler = MenuBarColorSampler()
     private let log = Logger(subsystem: DropNotchInfo.logSubsystem, category: "coordinator")
 
     private var globalMouseMonitor: Any?
@@ -140,6 +141,12 @@ public final class AppCoordinator {
 
     private func refreshPanel(notch: CGRect) {
         refreshTask?.cancel()
+        // Tint independently: SCShareableContent cold-starts slowly and must
+        // not delay the panel.
+        Task { @MainActor [weak self] in
+            guard let self, let tint = await self.colorSampler.sample(notch: notch) else { return }
+            self.panelController.setTint(tint)
+        }
         refreshTask = Task { @MainActor [weak self] in
             guard let self else { return }
             let items = self.scanHiddenItems(notch: notch)
