@@ -159,8 +159,13 @@ public final class AppCoordinator {
             // Borrow window IDs from CGWindowList (matched by owner + overlap)
             // so the capturer can grab live pixels.
             result = axHidden.map { item in
+                // Same owner isn't enough: apps park popover windows at the
+                // status level too. Insist on menu-bar-item geometry.
                 let match = windows.first {
-                    $0.ownerPID == item.ownerPID && $0.frame.intersects(item.frame)
+                    $0.ownerPID == item.ownerPID
+                        && $0.frame.intersects(item.frame)
+                        && $0.frame.height <= 40
+                        && abs($0.frame.width - item.frame.width) <= 8
                 }
                 return item.withWindowID(match?.windowID)
             }

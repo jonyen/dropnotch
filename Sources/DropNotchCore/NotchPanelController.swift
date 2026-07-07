@@ -38,13 +38,6 @@ struct NotchPanelView: View {
         .padding(.horizontal, 16)
         .padding(.top, 6)
         .padding(.bottom, 10)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(
-            .ultraThinMaterial,
-            in: UnevenRoundedRectangle(
-                cornerRadii: .init(bottomLeading: 14, bottomTrailing: 14),
-                style: .continuous)
-        )
     }
 }
 
@@ -73,6 +66,28 @@ private struct IconButton: View {
 private final class NonKeyPanel: NSPanel {
     override var canBecomeKey: Bool { false }
     override var canBecomeMain: Bool { false }
+}
+
+/// Panel appearance knobs, overridable via environment for quick visual
+/// iteration: DROPNOTCH_MATERIAL=menu|popover|hud|sidebar|tooltip|selection
+/// and DROPNOTCH_ALPHA=0.0-1.0.
+enum PanelStyle {
+    static var material: NSVisualEffectView.Material {
+        switch ProcessInfo.processInfo.environment["DROPNOTCH_MATERIAL"] {
+        case "menu": return .menu
+        case "hud": return .hudWindow
+        case "sidebar": return .sidebar
+        case "tooltip": return .toolTip
+        case "selection": return .selection
+        case "underwindow": return .underWindowBackground
+        default: return .popover
+        }
+    }
+
+    static var materialAlpha: CGFloat {
+        ProcessInfo.processInfo.environment["DROPNOTCH_ALPHA"]
+            .flatMap { Double($0) }.map { CGFloat($0) } ?? 0.7
+    }
 }
 
 @MainActor
@@ -117,9 +132,40 @@ public final class NotchPanelController {
         // would otherwise reset the level.)
         panel.level = .floating
 
-        // Translucent material + rounded bottom corners come from the SwiftUI
-        // view's .ultraThinMaterial background.
-        panel.contentView = NSHostingView(rootView: NotchPanelView(model: model))
+        // SwiftUI materials only blur content within the window (nothing, in
+        // a clear panel), so real translucency needs an NSVisualEffectView
+        // blending behind the window. The effect view and the icon row are
+        // siblings so the material's alpha never fades the icons.
+        let container = NSView()
+        container.wantsLayer = true
+        container.layer?.cornerRadius = 14
+        container.layer?.cornerCurve = .continuous
+        container.layer?.maskedCorners = [.layerMinXMinYCorner, .layerMaxXMinYCorner]
+        container.layer?.masksToBounds = true
+
+        let effect = NSVisualEffectView()
+        effect.material = PanelStyle.material
+        effect.state = .active
+        effect.blendingMode = .behindWindow
+        effect.alphaValue = PanelStyle.materialAlpha
+        effect.translatesAutoresizingMaskIntoConstraints = false
+
+        let hosting = NSHostingView(rootView: NotchPanelView(model: model))
+        hosting.translatesAutoresizingMaskIntoConstraints = false
+
+        container.addSubview(effect)
+        container.addSubview(hosting)
+        NSLayoutConstraint.activate([
+            effect.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            effect.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+            effect.topAnchor.constraint(equalTo: container.topAnchor),
+            effect.bottomAnchor.constraint(equalTo: container.bottomAnchor),
+            hosting.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            hosting.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+            hosting.topAnchor.constraint(equalTo: container.topAnchor),
+            hosting.bottomAnchor.constraint(equalTo: container.bottomAnchor),
+        ])
+        panel.contentView = container
     }
 
     public func show(items: [PanelItem], notch: CGRect) {
