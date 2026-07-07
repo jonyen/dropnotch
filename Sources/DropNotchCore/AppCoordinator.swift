@@ -79,10 +79,11 @@ public final class AppCoordinator {
             guard notch.contains(NSEvent.mouseLocation) else { return }
             guard windowList.isMenuBarVisible() else { return }
         }
+        // Pad the panel's hover region so grazing its edge doesn't hide it.
         let action = stateMachine.mouseMoved(
             to: NSEvent.mouseLocation,
             notch: notch,
-            panel: panelController.panelFrame,
+            panel: panelController.panelFrame?.insetBy(dx: -12, dy: -12),
             now: Date())
         perform(action, notch: notch)
     }
