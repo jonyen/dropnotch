@@ -18,10 +18,16 @@ public struct PanelItem: Identifiable {
 final class PanelModel: ObservableObject {
     @Published var items: [PanelItem] = []
     var onClick: ((MenuBarItemInfo) -> Void)?
+    var onReorder: (([PanelItem]) -> Void)?
 }
 
 struct NotchPanelView: View {
     @ObservedObject var model: PanelModel
+    @State private var dragIndex: Int?
+    @State private var dragOffset: CGFloat = 0
+
+    /// Approximate horizontal footprint of one icon (28pt min + padding + spacing).
+    private let slotWidth: CGFloat = 44
 
     var body: some View {
         HStack(spacing: 8) {
@@ -30,8 +36,11 @@ struct NotchPanelView: View {
                     .font(.system(size: 12))
                     .foregroundStyle(.secondary)
             } else {
-                ForEach(model.items) { item in
+                ForEach(Array(model.items.enumerated()), id: \.element.id) { index, item in
                     IconButton(item: item) { model.onClick?(item.info) }
+                        .offset(x: dragIndex == index ? dragOffset : 0)
+                        .zIndex(dragIndex == index ? 1 : 0)
+                        .gesture(dragGesture(for: index))
                 }
             }
         }
@@ -39,25 +48,45 @@ struct NotchPanelView: View {
         .padding(.top, 6)
         .padding(.bottom, 10)
     }
+
+    /// Cmd+drag rearranges icons, mirroring the real menu bar's gesture.
+    private func dragGesture(for index: Int) -> some Gesture {
+        DragGesture(minimumDistance: 4)
+            .onChanged { value in
+                guard NSEvent.modifierFlags.contains(.command) else { return }
+                if dragIndex == nil { dragIndex = index }
+                if dragIndex == index { dragOffset = value.translation.width }
+            }
+            .onEnded { value in
+                defer {
+                    dragIndex = nil
+                    dragOffset = 0
+                }
+                guard dragIndex == index else { return }
+                let delta = Int((value.translation.width / slotWidth).rounded())
+                let target = max(0, min(model.items.count - 1, index + delta))
+                guard target != index else { return }
+                var items = model.items
+                items.insert(items.remove(at: index), at: target)
+                model.items = items
+                model.onReorder?(items)
+            }
+    }
 }
 
 private struct IconButton: View {
     let item: PanelItem
     let action: () -> Void
-    @State private var hovering = false
 
     var body: some View {
+        // No hover highlight: the real menu bar doesn't highlight on
+        // mouse-over, and this panel should feel like an extension of it.
         Image(nsImage: item.image)
             .resizable()
             .aspectRatio(contentMode: .fit)
             .frame(height: 24)
             .frame(minWidth: 28)
             .padding(4)
-            .background(
-                RoundedRectangle(cornerRadius: 6)
-                    .fill(hovering ? Color.primary.opacity(0.15) : Color.clear)
-            )
-            .onHover { hovering = $0 }
             .onTapGesture(perform: action)
             .help(item.info.tooltip ?? item.info.title ?? item.info.ownerName)
     }
@@ -116,6 +145,11 @@ public final class NotchPanelController {
         set { model.onClick = newValue }
     }
 
+    public var onReorder: (([PanelItem]) -> Void)? {
+        get { model.onReorder }
+        set { model.onReorder = newValue }
+    }
+
     public var panelFrame: CGRect? {
         // Mid-hide the panel is visually gone; don't count it as hover area.
         (panel.isVisible && !isHiding) ? panel.frame : nil
@@ -130,7 +164,9 @@ public final class NotchPanelController {
         panel.collectionBehavior = [.canJoinAllSpaces, .stationary, .fullScreenAuxiliary]
         panel.backgroundColor = .clear
         panel.isOpaque = false
-        panel.hasShadow = true
+        // No shadow: its hard rim reads as a black outline against the
+        // menu bar, and the real menu bar draws none.
+        panel.hasShadow = false
         panel.isFloatingPanel = true
         panel.hidesOnDeactivate = false
         // Below the menu bar window so the slide-down animation emerges from

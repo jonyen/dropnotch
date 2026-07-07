@@ -38,6 +38,10 @@ public final class AppCoordinator {
             self?.hidePanel(animated: false)
             self?.clickForwarder.activate(item)
         }
+        panelController.onReorder = { [weak self] items in
+            PanelOrder.save(items.map(\.info.ownerName))
+            self?.lastPanelItems = items
+        }
     }
 
     public func start() {
@@ -183,7 +187,7 @@ public final class AppCoordinator {
         for item in result {
             log.debug("hidden item: \(item.ownerName, privacy: .public) pid=\(item.ownerPID) windowID=\(item.windowID.map(String.init) ?? "ax", privacy: .public) frame=\(String(describing: item.frame), privacy: .public)")
         }
-        return result
+        return PanelOrder.apply(saved: PanelOrder.saved(), to: result)
     }
 
     private func hidePanel(animated: Bool = true) {
