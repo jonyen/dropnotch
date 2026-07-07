@@ -80,6 +80,8 @@ public final class NotchPanelController {
     private var openWidth: CGFloat = 0
     /// Where the panel is headed (may still be animating there).
     private var targetFrame: CGRect = .zero
+    /// True while the slide-up hide animation is in flight.
+    private var isHiding = false
 
     public var onItemClick: ((MenuBarItemInfo) -> Void)? {
         get { model.onClick }
@@ -87,7 +89,8 @@ public final class NotchPanelController {
     }
 
     public var panelFrame: CGRect? {
-        panel.isVisible ? panel.frame : nil
+        // Mid-hide the panel is visually gone; don't count it as hover area.
+        (panel.isVisible && !isHiding) ? panel.frame : nil
     }
 
     public init() {
@@ -133,7 +136,10 @@ public final class NotchPanelController {
 
     public func show(items: [PanelItem], notch: CGRect) {
         showGeneration += 1
-        let wasVisible = panel.isVisible
+        // A panel mid-hide counts as not visible: it needs the full
+        // place-and-slide path, not an in-place content refresh.
+        let wasVisible = panel.isVisible && !isHiding
+        isHiding = false
         model.items = items
         panel.contentView?.layoutSubtreeIfNeeded()
         let size = panel.contentView?.fittingSize ?? .zero
@@ -170,7 +176,9 @@ public final class NotchPanelController {
     }
 
     public func hide() {
-        guard panel.isVisible else { return }
+        guard panel.isVisible, !isHiding else { return }
+        isHiding = true
+        targetFrame = .zero
         let generation = showGeneration
         let frame = panel.frame
         let upFrame = CGRect(x: frame.minX, y: frame.maxY, width: frame.width, height: frame.height)
@@ -182,6 +190,7 @@ public final class NotchPanelController {
             Task { @MainActor in
                 guard let self, self.showGeneration == generation else { return }
                 self.panel.orderOut(nil)
+                self.isHiding = false
             }
         })
     }
