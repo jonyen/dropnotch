@@ -68,6 +68,12 @@ private final class NonKeyPanel: NSPanel {
     override var canBecomeMain: Bool { false }
 }
 
+/// First click must register without activating the app, or taps in the
+/// panel are swallowed as focus clicks.
+private final class FirstMouseHostingView<Content: View>: NSHostingView<Content> {
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+}
+
 /// Panel appearance knobs, overridable via environment for quick visual
 /// iteration: DROPNOTCH_MATERIAL=menu|popover|hud|sidebar|tooltip|selection
 /// and DROPNOTCH_ALPHA=0.0-1.0.
@@ -150,7 +156,7 @@ public final class NotchPanelController {
         effect.alphaValue = PanelStyle.materialAlpha
         effect.translatesAutoresizingMaskIntoConstraints = false
 
-        let hosting = NSHostingView(rootView: NotchPanelView(model: model))
+        let hosting = FirstMouseHostingView(rootView: NotchPanelView(model: model))
         hosting.translatesAutoresizingMaskIntoConstraints = false
 
         container.addSubview(effect)

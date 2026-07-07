@@ -28,7 +28,10 @@ public enum StatusItemScanner {
     }
 
     private static func isHidden(_ frame: CGRect, notch: CGRect?, screenFrame: CGRect) -> Bool {
-        if let notch, frame.intersects(notch) { return true }
+        // On notched screens, visible status items live strictly right of
+        // the notch; macOS parks overflow items under it or further left in
+        // app-menu territory, where they never render.
+        if let notch, frame.minX < notch.maxX { return true }
         if frame.minX < screenFrame.minX { return true }
         if frame.maxX > screenFrame.maxX { return true }
         return false

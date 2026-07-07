@@ -32,6 +32,7 @@ public final class AppCoordinator {
         self.capturer = capturer
         self.clickForwarder = ClickForwarder(axSource: axSource)
         panelController.onItemClick = { [weak self] item in
+            self?.log.debug("panel click: \(item.ownerName, privacy: .public)")
             // Vanish instantly so the item's real menu opens into clear
             // space instead of behind a sliding panel.
             self?.hidePanel(animated: false)

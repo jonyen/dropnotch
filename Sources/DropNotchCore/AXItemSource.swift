@@ -1,9 +1,13 @@
 import AppKit
 import ApplicationServices
 
+import os.log
+
 /// Secondary discovery + click path via the Accessibility API.
 /// Enumerates each running app's "extras menu bar" (its status items).
 public final class AXItemSource {
+    private let log = Logger(subsystem: DropNotchInfo.logSubsystem, category: "ax")
+
     public init() {}
 
     /// Status items discoverable via AX, frames in Cocoa coords, windowID nil.
@@ -27,10 +31,15 @@ public final class AXItemSource {
         return result
     }
 
-    /// AXPress the status item of `pid` whose x-center is closest to `nearCocoaX`.
+    /// Press the status item of `pid` whose x-center is closest to
+    /// `nearCocoaX`. Tries AXPress, then AXShowMenu (some apps only
+    /// implement one).
     public func pressItem(pid: pid_t, nearCocoaX: CGFloat, mainDisplayHeight: CGFloat) -> Bool {
         let children = extrasChildren(pid: pid)
-        guard !children.isEmpty else { return false }
+        guard !children.isEmpty else {
+            log.info("pressItem pid=\(pid): no AX extras children")
+            return false
+        }
         let target: AXUIElement
         if children.count == 1 {
             target = children[0]
@@ -40,7 +49,15 @@ public final class AXItemSource {
                     < distance(of: b, toCocoaX: nearCocoaX, mainDisplayHeight: mainDisplayHeight)
             } ?? children[0]
         }
-        return AXUIElementPerformAction(target, kAXPressAction as CFString) == .success
+        // Pressing can legitimately take a while (the app runs its menu
+        // handler); don't let the discovery timeout abort it.
+        AXUIElementSetMessagingTimeout(target, 2.0)
+        for action in [kAXPressAction, "AXShowMenu"] {
+            let result = AXUIElementPerformAction(target, action as CFString)
+            log.info("pressItem pid=\(pid) action=\(action, privacy: .public) result=\(result.rawValue)")
+            if result == .success { return true }
+        }
+        return false
     }
 
     // MARK: - AX plumbing

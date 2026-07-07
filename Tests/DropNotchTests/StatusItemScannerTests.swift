@@ -75,6 +75,22 @@ final class StatusItemScannerTests: XCTestCase {
         XCTAssertEqual(items.map(\.ownerName), ["A", "B"])
     }
 
+    func testItemParkedLeftOfNotchIsHidden() {
+        // macOS parks overflow items left of the notch, in app-menu
+        // territory where status items never render (observed: Backblaze).
+        let parked = item("Backblaze", x: 1400) // 1400-1440, left of notch 1528, no overlap
+        let items = StatusItemScanner.hiddenItems(
+            windows: [parked], notch: notch, screenFrame: screen, ownPID: ownPID)
+        XCTAssertEqual(items, [parked])
+    }
+
+    func testItemRightOfNotchStillVisible() {
+        let visible = item("Dropbox", x: 1930) // just right of notch end 1928
+        let items = StatusItemScanner.hiddenItems(
+            windows: [visible], notch: notch, screenFrame: screen, ownPID: ownPID)
+        XCTAssertTrue(items.isEmpty)
+    }
+
     func testWindowOutsideMenuBarBandExcluded() {
         // Popover/panel windows share the status window level but live
         // mid-screen; a band filter must drop them.
