@@ -10,6 +10,7 @@ macOS quietly parks overflow menu bar items under and to the left of the notch, 
 - Live pixel captures of hidden icons (battery %, dynamic icons stay current), app-icon fallback
 - Click forwarding via Accessibility with synthetic-click fallback
 - Tooltips mirror the real items' help text
+- Cmd+drag reorders icons in the panel (live reflow, persisted); releasing a cmd+drag up in the menu bar replays a real cmd+drag on the underlying item — note this only moves items macOS still gives a window (most hidden items have none; the OS destroys them, so there's nothing on screen to drag)
 - Own status item: Pause, Launch at Login, Quit
 - Panel never steals focus
 
