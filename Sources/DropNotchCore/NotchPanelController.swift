@@ -113,7 +113,7 @@ public final class NotchPanelController {
         // Menu-style translucent material, rounded bottom corners — reads as
         // an extension of the menu bar / an open menu.
         let effect = NSVisualEffectView()
-        effect.material = .menu
+        effect.material = .hudWindow
         effect.state = .active
         effect.blendingMode = .behindWindow
         effect.wantsLayer = true
