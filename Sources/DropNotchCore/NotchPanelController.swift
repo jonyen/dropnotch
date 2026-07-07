@@ -38,6 +38,13 @@ struct NotchPanelView: View {
         .padding(.horizontal, 16)
         .padding(.top, 6)
         .padding(.bottom, 10)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(
+            .ultraThinMaterial,
+            in: UnevenRoundedRectangle(
+                cornerRadii: .init(bottomLeading: 14, bottomTrailing: 14),
+                style: .continuous)
+        )
     }
 }
 
@@ -110,28 +117,9 @@ public final class NotchPanelController {
         // would otherwise reset the level.)
         panel.level = .floating
 
-        // Menu-style translucent material, rounded bottom corners — reads as
-        // an extension of the menu bar / an open menu.
-        let effect = NSVisualEffectView()
-        effect.material = .hudWindow
-        effect.state = .active
-        effect.blendingMode = .behindWindow
-        effect.wantsLayer = true
-        effect.layer?.cornerRadius = 14
-        effect.layer?.cornerCurve = .continuous
-        effect.layer?.maskedCorners = [.layerMinXMinYCorner, .layerMaxXMinYCorner]
-        effect.layer?.masksToBounds = true
-
-        let hosting = NSHostingView(rootView: NotchPanelView(model: model))
-        hosting.translatesAutoresizingMaskIntoConstraints = false
-        effect.addSubview(hosting)
-        NSLayoutConstraint.activate([
-            hosting.leadingAnchor.constraint(equalTo: effect.leadingAnchor),
-            hosting.trailingAnchor.constraint(equalTo: effect.trailingAnchor),
-            hosting.topAnchor.constraint(equalTo: effect.topAnchor),
-            hosting.bottomAnchor.constraint(equalTo: effect.bottomAnchor),
-        ])
-        panel.contentView = effect
+        // Translucent material + rounded bottom corners come from the SwiftUI
+        // view's .ultraThinMaterial background.
+        panel.contentView = NSHostingView(rootView: NotchPanelView(model: model))
     }
 
     public func show(items: [PanelItem], notch: CGRect) {
