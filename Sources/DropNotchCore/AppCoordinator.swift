@@ -42,6 +42,11 @@ public final class AppCoordinator {
             PanelOrder.save(items.map(\.info.ownerName))
             self?.lastPanelItems = items
         }
+        panelController.onDragToMenuBar = { [weak self] item, target in
+            self?.log.debug("drag to menu bar: \(item.ownerName, privacy: .public) x=\(target.x)")
+            self?.hidePanel(animated: false)
+            self?.clickForwarder.moveItem(item, toCocoa: target)
+        }
     }
 
     public func start() {

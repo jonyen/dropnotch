@@ -19,6 +19,10 @@ final class PanelModel: ObservableObject {
     @Published var items: [PanelItem] = []
     var onClick: ((MenuBarItemInfo) -> Void)?
     var onReorder: (([PanelItem]) -> Void)?
+    /// Cmd+drag released up in the menu bar band: move the real item there.
+    var onDragToMenuBar: ((MenuBarItemInfo, CGPoint) -> Void)?
+    /// Bottom of the menu bar in global Cocoa coords (set on show).
+    var menuBarMinY: CGFloat = .greatestFiniteMagnitude
 }
 
 struct NotchPanelView: View {
@@ -37,9 +41,11 @@ struct NotchPanelView: View {
                     .foregroundStyle(.secondary)
             } else {
                 ForEach(Array(model.items.enumerated()), id: \.element.id) { index, item in
+                    let shift = displacement(for: index)
                     IconButton(item: item) { model.onClick?(item.info) }
-                        .offset(x: dragIndex == index ? dragOffset : 0)
+                        .offset(x: shift)
                         .zIndex(dragIndex == index ? 1 : 0)
+                        .animation(dragIndex == index ? nil : .easeOut(duration: 0.15), value: shift)
                         .gesture(dragGesture(for: index))
                 }
             }
@@ -47,6 +53,23 @@ struct NotchPanelView: View {
         .padding(.horizontal, 16)
         .padding(.top, 6)
         .padding(.bottom, 10)
+    }
+
+    /// While dragging, the slot the dragged icon would land in.
+    private func proposedTarget(from index: Int) -> Int {
+        let delta = Int((dragOffset / slotWidth).rounded())
+        return max(0, min(model.items.count - 1, index + delta))
+    }
+
+    /// Live reflow: neighbors step aside as the dragged icon passes them,
+    /// just like the real menu bar.
+    private func displacement(for index: Int) -> CGFloat {
+        guard let from = dragIndex else { return 0 }
+        if index == from { return dragOffset }
+        let target = proposedTarget(from: from)
+        if from < target, index > from, index <= target { return -slotWidth }
+        if from > target, index < from, index >= target { return slotWidth }
+        return 0
     }
 
     /// Cmd+drag rearranges icons, mirroring the real menu bar's gesture.
@@ -58,13 +81,21 @@ struct NotchPanelView: View {
                 if dragIndex == index { dragOffset = value.translation.width }
             }
             .onEnded { value in
-                defer {
+                guard dragIndex == index else {
                     dragIndex = nil
                     dragOffset = 0
+                    return
                 }
-                guard dragIndex == index else { return }
-                let delta = Int((value.translation.width / slotWidth).rounded())
-                let target = max(0, min(model.items.count - 1, index + delta))
+                let target = proposedTarget(from: index)
+                dragIndex = nil
+                dragOffset = 0
+                // Released up in the menu bar: move the real item there
+                // instead of reordering the panel.
+                let release = NSEvent.mouseLocation
+                if release.y >= model.menuBarMinY {
+                    model.onDragToMenuBar?(model.items[index].info, release)
+                    return
+                }
                 guard target != index else { return }
                 var items = model.items
                 items.insert(items.remove(at: index), at: target)
@@ -150,6 +181,11 @@ public final class NotchPanelController {
         set { model.onReorder = newValue }
     }
 
+    public var onDragToMenuBar: ((MenuBarItemInfo, CGPoint) -> Void)? {
+        get { model.onDragToMenuBar }
+        set { model.onDragToMenuBar = newValue }
+    }
+
     public var panelFrame: CGRect? {
         // Mid-hide the panel is visually gone; don't count it as hover area.
         (panel.isVisible && !isHiding) ? panel.frame : nil
@@ -215,6 +251,7 @@ public final class NotchPanelController {
 
     public func show(items: [PanelItem], notch: CGRect) {
         showGeneration += 1
+        model.menuBarMinY = notch.minY
         // A panel mid-hide counts as not visible: it needs the full
         // place-and-slide path, not an in-place content refresh.
         let wasVisible = panel.isVisible && !isHiding
