@@ -31,6 +31,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
         if Permissions.allGranted, let coordinator {
             onboardingWindow?.close()
             onboardingWindow = nil
+            NSApp.setActivationPolicy(.accessory)
             coordinator.start()
         }
     }
@@ -69,9 +70,15 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
         stack.edgeInsets = NSEdgeInsets(top: 20, left: 20, bottom: 20, right: 20)
         window.contentView = stack
 
+        // LSUIElement apps get denied cooperative activation, which leaves
+        // this window unmapped (created but never on screen). Become a
+        // regular app while onboarding is up; drop back to accessory after.
+        NSApp.setActivationPolicy(.regular)
         window.makeKeyAndOrderFront(nil)
+        window.orderFrontRegardless()
         NSApp.activate(ignoringOtherApps: true)
         onboardingWindow = window
+        log.info("onboarding window visible=\(window.isVisible, privacy: .public)")
     }
 
     @objc private func openScreenSettings() { Permissions.openScreenRecordingSettings() }
