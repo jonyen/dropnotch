@@ -18,6 +18,7 @@ public final class AppCoordinator {
     private var graceTimer: Timer?
     private var refreshTimer: Timer?
     private var refreshTask: Task<Void, Never>?
+    private var lastPanelItems: [PanelItem] = []
 
     public var isPaused = false {
         didSet { if isPaused { hidePanel() } }
@@ -97,8 +98,16 @@ public final class AppCoordinator {
     // MARK: - Panel lifecycle
 
     private func showPanel(notch: CGRect) {
+        // Show instantly with the last known items so the panel exists (and
+        // its frame joins the hover region) before captures finish; the
+        // refresh below replaces the content when ready.
+        if !lastPanelItems.isEmpty {
+            panelController.show(items: lastPanelItems, notch: notch)
+        }
         refreshPanel(notch: notch)
 
+        graceTimer?.invalidate()
+        refreshTimer?.invalidate()
         graceTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
             Task { @MainActor in
                 guard let self, let notch = self.notchRect else { return }
@@ -124,6 +133,7 @@ public final class AppCoordinator {
                 panelItems.append(PanelItem(id: index, info: item, image: image))
             }
             guard !Task.isCancelled, !self.stateMachine.isIdle else { return }
+            self.lastPanelItems = panelItems
             self.panelController.show(items: panelItems, notch: notch)
         }
     }

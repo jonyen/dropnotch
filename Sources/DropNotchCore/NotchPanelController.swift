@@ -1,5 +1,6 @@
 import AppKit
 import SwiftUI
+import os.log
 
 public struct PanelItem: Identifiable {
     public let id: Int
@@ -77,6 +78,8 @@ public final class NotchPanelController {
     /// Width locked in while the panel is open: refreshes may grow it but
     /// never shrink it, so the panel doesn't snap around horizontally.
     private var openWidth: CGFloat = 0
+    /// Where the panel is headed (may still be animating there).
+    private var targetFrame: CGRect = .zero
 
     public var onItemClick: ((MenuBarItemInfo) -> Void)? {
         get { model.onClick }
@@ -138,12 +141,20 @@ public final class NotchPanelController {
         openWidth = width
         let finalFrame = CGRect(x: notch.midX - width / 2, y: notch.minY - size.height,
                                 width: width, height: size.height)
+        Logger(subsystem: DropNotchInfo.logSubsystem, category: "panel")
+            .debug("show items=\(items.count) fitting=\(size.width, format: .fixed(precision: 1))x\(size.height, format: .fixed(precision: 1)) frame=\(String(describing: finalFrame), privacy: .public) wasVisible=\(wasVisible, privacy: .public)")
 
         if wasVisible {
-            // 1s refresh while open: update in place, no animation.
-            panel.setFrame(finalFrame, display: true)
+            // 1s refresh while open: update in place, no animation. Compare
+            // against the animation target, not the live frame, so an
+            // in-flight slide isn't stomped mid-animation.
+            if targetFrame != finalFrame {
+                panel.setFrame(finalFrame, display: true)
+            }
+            targetFrame = finalFrame
             return
         }
+        targetFrame = finalFrame
 
         // Slide down from behind the menu bar: start with the panel tucked
         // fully above its final position, then animate to rest.
