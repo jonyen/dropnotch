@@ -137,6 +137,9 @@ public final class NotchPanelController {
         // under it, above normal windows. (Set after isFloatingPanel, which
         // would otherwise reset the level.)
         panel.level = .floating
+        // Menu bar icons are white glyphs; force dark appearance so the
+        // panel reads as an extension of the menu bar.
+        panel.appearance = NSAppearance(named: .darkAqua)
 
         // SwiftUI materials only blur content within the window (nothing, in
         // a clear panel), so real translucency needs an NSVisualEffectView
