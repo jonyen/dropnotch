@@ -52,12 +52,19 @@ public final class AXItemSource {
         // Pressing can legitimately take a while (the app runs its menu
         // handler); don't let the discovery timeout abort it.
         AXUIElementSetMessagingTimeout(target, 2.0)
-        for action in [kAXPressAction, "AXShowMenu"] {
-            let result = AXUIElementPerformAction(target, action as CFString)
-            log.info("pressItem pid=\(pid) action=\(action, privacy: .public) result=\(result.rawValue)")
-            if result == .success { return true }
+        var result = AXUIElementPerformAction(target, kAXPressAction as CFString)
+        if result == .cannotComplete {
+            // The first press to an app routinely times out (-25204) while
+            // its stale AX connection wakes up; the immediate retry succeeds
+            // (observed with Teams, Captions).
+            result = AXUIElementPerformAction(target, kAXPressAction as CFString)
+            log.info("pressItem pid=\(pid) retry result=\(result.rawValue)")
         }
-        return false
+        if result != .success {
+            result = AXUIElementPerformAction(target, "AXShowMenu" as CFString)
+        }
+        log.info("pressItem pid=\(pid) final result=\(result.rawValue)")
+        return result == .success
     }
 
     // MARK: - AX plumbing

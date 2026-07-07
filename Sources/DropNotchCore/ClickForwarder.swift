@@ -12,12 +12,16 @@ public final class ClickForwarder {
     }
 
     public func activate(_ item: MenuBarItemInfo) {
-        let height = CGDisplayBounds(CGMainDisplayID()).height
-        if axSource.pressItem(pid: item.ownerPID, nearCocoaX: item.frame.midX, mainDisplayHeight: height) {
-            return
+        // AX press can block for seconds while a stale app connection wakes
+        // up; keep it off the main thread.
+        DispatchQueue.global(qos: .userInitiated).async { [self] in
+            let height = CGDisplayBounds(CGMainDisplayID()).height
+            if axSource.pressItem(pid: item.ownerPID, nearCocoaX: item.frame.midX, mainDisplayHeight: height) {
+                return
+            }
+            log.info("AXPress failed for \(item.ownerName), falling back to synthetic click")
+            syntheticClick(at: CGPoint(x: item.frame.midX, y: item.frame.midY), mainDisplayHeight: height)
         }
-        log.info("AXPress failed for \(item.ownerName), falling back to synthetic click")
-        syntheticClick(at: CGPoint(x: item.frame.midX, y: item.frame.midY), mainDisplayHeight: height)
     }
 
     private func syntheticClick(at cocoaPoint: CGPoint, mainDisplayHeight: CGFloat) {
