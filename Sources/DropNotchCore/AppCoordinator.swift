@@ -32,7 +32,9 @@ public final class AppCoordinator {
         self.capturer = capturer
         self.clickForwarder = ClickForwarder(axSource: axSource)
         panelController.onItemClick = { [weak self] item in
-            self?.hidePanel()
+            // Vanish instantly so the item's real menu opens into clear
+            // space instead of behind a sliding panel.
+            self?.hidePanel(animated: false)
             self?.clickForwarder.activate(item)
         }
     }
@@ -78,6 +80,9 @@ public final class AppCoordinator {
         if stateMachine.isIdle {
             guard notch.contains(NSEvent.mouseLocation) else { return }
             guard windowList.isMenuBarVisible() else { return }
+            // Don't drop the panel on top of an open menu (e.g. the one the
+            // user just opened from the panel).
+            guard !windowList.isPopUpMenuOpen() else { return }
         }
         // Pad the panel's hover region so grazing its edge doesn't hide it.
         let action = stateMachine.mouseMoved(
@@ -180,13 +185,13 @@ public final class AppCoordinator {
         return result
     }
 
-    private func hidePanel() {
+    private func hidePanel(animated: Bool = true) {
         stateMachine.reset()
         graceTimer?.invalidate()
         refreshTimer?.invalidate()
         graceTimer = nil
         refreshTimer = nil
         refreshTask?.cancel()
-        panelController.hide()
+        panelController.hide(animated: animated)
     }
 }

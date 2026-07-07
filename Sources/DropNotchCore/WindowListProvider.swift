@@ -6,6 +6,8 @@ public protocol WindowListProviding {
     func menuBarItemWindows() -> [MenuBarItemInfo]
     /// False while a fullscreen app hides the menu bar.
     func isMenuBarVisible() -> Bool
+    /// True while any app has a pop-up menu open (e.g. a status item's menu).
+    func isPopUpMenuOpen() -> Bool
 }
 
 public final class CGWindowListProvider: WindowListProviding {
@@ -36,6 +38,13 @@ public final class CGWindowListProvider: WindowListProviding {
                 frame: NotchGeometry.cocoaRect(fromCGRect: cgFrame, mainDisplayHeight: height),
                 title: info[kCGWindowName as String] as? String)
         }
+    }
+
+    public func isPopUpMenuOpen() -> Bool {
+        let menuLevel = Int(CGWindowLevelForKey(.popUpMenuWindow))
+        guard let list = CGWindowListCopyWindowInfo(
+            [.optionOnScreenOnly], kCGNullWindowID) as? [[String: Any]] else { return false }
+        return list.contains { ($0[kCGWindowLayer as String] as? Int) == menuLevel }
     }
 
     public func isMenuBarVisible() -> Bool {

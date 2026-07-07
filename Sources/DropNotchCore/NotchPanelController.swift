@@ -209,10 +209,14 @@ public final class NotchPanelController {
         }
     }
 
-    public func hide() {
+    public func hide(animated: Bool = true) {
         guard panel.isVisible, !isHiding else { return }
-        isHiding = true
         targetFrame = .zero
+        guard animated else {
+            panel.orderOut(nil)
+            return
+        }
+        isHiding = true
         let generation = showGeneration
         let frame = panel.frame
         let upFrame = CGRect(x: frame.minX, y: frame.maxY, width: frame.width, height: frame.height)
