@@ -74,6 +74,9 @@ public final class NotchPanelController {
     /// Bumped on every show; a hide animation's completion only orders the
     /// panel out if no show happened while it was animating.
     private var showGeneration = 0
+    /// Width locked in while the panel is open: refreshes may grow it but
+    /// never shrink it, so the panel doesn't snap around horizontally.
+    private var openWidth: CGFloat = 0
 
     public var onItemClick: ((MenuBarItemInfo) -> Void)? {
         get { model.onClick }
@@ -131,7 +134,8 @@ public final class NotchPanelController {
         model.items = items
         panel.contentView?.layoutSubtreeIfNeeded()
         let size = panel.contentView?.fittingSize ?? .zero
-        let width = max(size.width, notch.width)
+        let width = max(size.width, notch.width, wasVisible ? openWidth : 0)
+        openWidth = width
         let finalFrame = CGRect(x: notch.midX - width / 2, y: notch.minY - size.height,
                                 width: width, height: size.height)
 
