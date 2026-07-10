@@ -157,6 +157,13 @@ public final class AppCoordinator {
             }
             guard !Task.isCancelled, !self.stateMachine.isIdle else { return }
             self.lastPanelItems = panelItems
+            // Nothing hidden: no panel at all. Stay in the showing state so
+            // the 1s refresh keeps scanning while the mouse lingers, and the
+            // panel appears if an item gets hidden.
+            if panelItems.isEmpty {
+                self.panelController.hide()
+                return
+            }
             self.panelController.show(items: panelItems, notch: notch)
         }
     }

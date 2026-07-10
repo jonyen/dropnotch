@@ -20,6 +20,7 @@ public final class StatusMenuController: NSObject {
         let menu = NSMenu()
         pauseItem.target = self
         loginItem.target = self
+        Self.autoEnableLoginItemOnFirstRun()
         loginItem.state = SMAppService.mainApp.status == .enabled ? .on : .off
         if !Self.hasNotchedScreen {
             let noNotch = NSMenuItem(title: "No notch on this display", action: nil, keyEquivalent: "")
@@ -32,6 +33,17 @@ public final class StatusMenuController: NSObject {
         menu.addItem(.separator())
         menu.addItem(NSMenuItem(title: "Quit DropNotch", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
         statusItem.menu = menu
+    }
+
+    /// Launch at login defaults to on. Only the first successful registration
+    /// sets the flag, so a dev run outside an app bundle (where registration
+    /// fails) doesn't burn the one auto-enable, and a user who later turns
+    /// the menu toggle off stays off.
+    private static func autoEnableLoginItemOnFirstRun() {
+        let key = "didAutoEnableLoginItem"
+        guard !UserDefaults.standard.bool(forKey: key) else { return }
+        guard (try? SMAppService.mainApp.register()) != nil else { return }
+        UserDefaults.standard.set(true, forKey: key)
     }
 
     private static var hasNotchedScreen: Bool {

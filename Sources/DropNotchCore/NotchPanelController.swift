@@ -35,19 +35,13 @@ struct NotchPanelView: View {
 
     var body: some View {
         HStack(spacing: 8) {
-            if model.items.isEmpty {
-                Text("Nothing hidden")
-                    .font(.system(size: 12))
-                    .foregroundStyle(.secondary)
-            } else {
-                ForEach(Array(model.items.enumerated()), id: \.element.id) { index, item in
-                    let shift = displacement(for: index)
-                    IconButton(item: item) { model.onClick?(item.info) }
-                        .offset(x: shift)
-                        .zIndex(dragIndex == index ? 1 : 0)
-                        .animation(dragIndex == index ? nil : .easeOut(duration: 0.15), value: shift)
-                        .gesture(dragGesture(for: index))
-                }
+            ForEach(Array(model.items.enumerated()), id: \.element.id) { index, item in
+                let shift = displacement(for: index)
+                IconButton(item: item) { model.onClick?(item.info) }
+                    .offset(x: shift)
+                    .zIndex(dragIndex == index ? 1 : 0)
+                    .animation(dragIndex == index ? nil : .easeOut(duration: 0.15), value: shift)
+                    .gesture(dragGesture(for: index))
             }
         }
         .padding(.horizontal, 16)
