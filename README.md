@@ -18,7 +18,7 @@ macOS quietly parks overflow menu bar items under and to the left of the notch, 
 ## Requirements
 
 - macOS 14+ (built for a notched MacBook; idles politely without one)
-- Permissions: **Screen Recording** (live icon images) and **Accessibility** (click forwarding). First launch walks you through both.
+- Permissions: **Screen Recording** (live icon images) and **Accessibility** (click forwarding). DropNotch never asks at launch — pick **Grant Permissions…** from its menu bar item when you're ready. Without them it still runs, with static app icons and no click forwarding.
 
 ## Build
 

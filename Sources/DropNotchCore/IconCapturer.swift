@@ -21,6 +21,10 @@ public final class SCKIconCapturer: IconCapturing {
     }
 
     private func captureWindow(windowID: UInt32) async -> NSImage? {
+        // Touching ScreenCaptureKit without the grant makes macOS raise the
+        // permission dialog. Asking is the status menu's job, so fall back to
+        // bundle icons instead.
+        guard Permissions.screenRecordingGranted else { return nil }
         do {
             let content = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: false)
             guard let window = content.windows.first(where: { $0.windowID == windowID }) else {

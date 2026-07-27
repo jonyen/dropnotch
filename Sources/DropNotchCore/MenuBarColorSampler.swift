@@ -13,6 +13,9 @@ public final class MenuBarColorSampler {
     /// Average color of the menu bar strip beside the notch. `notch` in
     /// Cocoa coords; x values are shared between coordinate systems.
     public func sample(notch: CGRect) async -> NSColor? {
+        // See SCKIconCapturer: never let a capture attempt raise the
+        // permission dialog. Untinted panel is the graceful degradation.
+        guard Permissions.screenRecordingGranted else { return nil }
         do {
             let content = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true)
             guard let display = content.displays.first(where: { $0.displayID == CGMainDisplayID() }) else {

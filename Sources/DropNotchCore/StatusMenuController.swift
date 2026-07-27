@@ -1,12 +1,13 @@
 import AppKit
-import ServiceManagement
 
 @MainActor
-public final class StatusMenuController: NSObject {
+public final class StatusMenuController: NSObject, NSMenuDelegate {
     private var statusItem: NSStatusItem!
     private let coordinator: AppCoordinator
     private let pauseItem = NSMenuItem(title: "Pause", action: #selector(togglePause), keyEquivalent: "")
     private let loginItem = NSMenuItem(title: "Launch at Login", action: #selector(toggleLogin), keyEquivalent: "")
+    private let permissionsItem = NSMenuItem(title: "Grant Permissions…", action: #selector(grantPermissions), keyEquivalent: "")
+    private let permissionsSeparator = NSMenuItem.separator()
 
     public init(coordinator: AppCoordinator) {
         self.coordinator = coordinator
@@ -18,32 +19,68 @@ public final class StatusMenuController: NSObject {
             accessibilityDescription: "DropNotch")
 
         let menu = NSMenu()
+        menu.delegate = self
         pauseItem.target = self
         loginItem.target = self
-        Self.autoEnableLoginItemOnFirstRun()
-        loginItem.state = SMAppService.mainApp.status == .enabled ? .on : .off
+        permissionsItem.target = self
+        LoginItem.autoEnableOnFirstRun()
+        loginItem.state = LoginItem.isEnabled ? .on : .off
+        loginItem.isEnabled = LoginItem.isBundled
         if !Self.hasNotchedScreen {
             let noNotch = NSMenuItem(title: "No notch on this display", action: nil, keyEquivalent: "")
             noNotch.isEnabled = false
             menu.addItem(noNotch)
             menu.addItem(.separator())
         }
+        menu.addItem(permissionsItem)
+        menu.addItem(permissionsSeparator)
         menu.addItem(pauseItem)
         menu.addItem(loginItem)
         menu.addItem(.separator())
         menu.addItem(NSMenuItem(title: "Quit DropNotch", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
         statusItem.menu = menu
+        refreshPermissionsItem()
     }
 
-    /// Launch at login defaults to on. Only the first successful registration
-    /// sets the flag, so a dev run outside an app bundle (where registration
-    /// fails) doesn't burn the one auto-enable, and a user who later turns
-    /// the menu toggle off stays off.
-    private static func autoEnableLoginItemOnFirstRun() {
-        let key = "didAutoEnableLoginItem"
-        guard !UserDefaults.standard.bool(forKey: key) else { return }
-        guard (try? SMAppService.mainApp.register()) != nil else { return }
-        UserDefaults.standard.set(true, forKey: key)
+    // MARK: - Menu state
+
+    public func menuNeedsUpdate(_ menu: NSMenu) {
+        refreshPermissionsItem()
+        loginItem.state = LoginItem.isEnabled ? .on : .off
+    }
+
+    /// The permissions entry is the only place DropNotch ever asks, so it
+    /// stays out of the menu entirely once both grants are in place.
+    private func refreshPermissionsItem() {
+        let missing = !Permissions.allGranted
+        permissionsItem.isHidden = !missing
+        permissionsSeparator.isHidden = !missing
+    }
+
+    /// Asking is user-initiated: the system dialogs only fire from this menu
+    /// item, never at launch. `CGRequestScreenCaptureAccess` shows its dialog
+    /// once per app identity and silently returns false afterwards, so the
+    /// alert offers the System Settings panes as the durable fallback.
+    @objc private func grantPermissions() {
+        Permissions.requestScreenRecording()
+        Permissions.promptAccessibility()
+
+        let alert = NSAlert()
+        alert.messageText = "DropNotch needs two permissions"
+        alert.informativeText = """
+        • Screen Recording — to show live images of hidden menu bar icons
+        • Accessibility — to click them for you
+
+        Grant both in System Settings, then relaunch DropNotch.
+        """
+        alert.addButton(withTitle: "Open Screen Recording Settings")
+        alert.addButton(withTitle: "Open Accessibility Settings")
+        alert.addButton(withTitle: "Later")
+        switch alert.runModal() {
+        case .alertFirstButtonReturn: Permissions.openScreenRecordingSettings()
+        case .alertSecondButtonReturn: Permissions.openAccessibilitySettings()
+        default: break
+        }
     }
 
     private static var hasNotchedScreen: Bool {
@@ -60,16 +97,8 @@ public final class StatusMenuController: NSObject {
     }
 
     @objc private func toggleLogin() {
-        do {
-            if SMAppService.mainApp.status == .enabled {
-                try SMAppService.mainApp.unregister()
-                loginItem.state = .off
-            } else {
-                try SMAppService.mainApp.register()
-                loginItem.state = .on
-            }
-        } catch {
-            // Registration fails when running outside an app bundle; ignore.
-        }
+        let wantEnabled = !LoginItem.isEnabled
+        guard LoginItem.setEnabled(wantEnabled) else { return }
+        loginItem.state = wantEnabled ? .on : .off
     }
 }

@@ -4,83 +4,26 @@ import os.log
 public final class AppDelegate: NSObject, NSApplicationDelegate {
     private var coordinator: AppCoordinator?
     private var statusMenu: StatusMenuController?
-    private var onboardingWindow: NSWindow?
     private let log = Logger(subsystem: DropNotchInfo.logSubsystem, category: "app")
 
     public override init() { super.init() }
 
     public func applicationDidFinishLaunching(_ notification: Notification) {
-        log.info("didFinishLaunching: screenRecording=\(Permissions.screenRecordingGranted, privacy: .public) accessibility=\(Permissions.accessibilityGranted, privacy: .public)")
+        log.info("didFinishLaunching: bundled=\(LoginItem.isBundled, privacy: .public) screenRecording=\(Permissions.screenRecordingGranted, privacy: .public) accessibility=\(Permissions.accessibilityGranted, privacy: .public)")
+
+        // Belt and braces with the bundle's LSUIElement: a loose dev binary
+        // has no Info.plist and would otherwise take a Dock icon.
+        NSApp.setActivationPolicy(.accessory)
+        LoginItem.removeUnbundledRegistration()
+
         let coordinator = AppCoordinator()
         self.coordinator = coordinator
         statusMenu = StatusMenuController(coordinator: coordinator)
         log.info("status item created")
 
-        if Permissions.allGranted {
-            log.info("permissions granted, starting coordinator")
-            coordinator.start()
-        } else {
-            log.info("permissions missing, showing onboarding")
-            showOnboarding()
-        }
+        // Start regardless of permissions: launch stays silent, and the
+        // feature degrades on its own (AX-less scanning, bundle-icon
+        // fallbacks) until the user grants from the status menu.
+        coordinator.start()
     }
-
-    public func applicationDidBecomeActive(_ notification: Notification) {
-        // Re-check after the user visits System Settings.
-        log.info("didBecomeActive: allGranted=\(Permissions.allGranted, privacy: .public)")
-        if Permissions.allGranted, let coordinator {
-            onboardingWindow?.close()
-            onboardingWindow = nil
-            NSApp.setActivationPolicy(.accessory)
-            coordinator.start()
-        }
-    }
-
-    private func showOnboarding() {
-        Permissions.requestScreenRecording()
-        Permissions.promptAccessibility()
-
-        let alertText = """
-        DropNotch needs two permissions:
-
-        • Screen Recording — to show live images of hidden menu bar icons
-        • Accessibility — to click them for you
-
-        Grant both in System Settings, then relaunch DropNotch.
-        """
-        let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 420, height: 220),
-            styleMask: [.titled, .closable],
-            backing: .buffered, defer: false)
-        window.title = "DropNotch Permissions"
-        // ARC owns this window via `onboardingWindow`; the AppKit default
-        // (release-when-closed) would double-release it on close.
-        window.isReleasedWhenClosed = false
-        window.center()
-
-        let text = NSTextField(wrappingLabelWithString: alertText)
-        let screenButton = NSButton(title: "Open Screen Recording Settings",
-                                    target: self, action: #selector(openScreenSettings))
-        let axButton = NSButton(title: "Open Accessibility Settings",
-                                target: self, action: #selector(openAXSettings))
-        let stack = NSStackView(views: [text, screenButton, axButton])
-        stack.orientation = .vertical
-        stack.alignment = .leading
-        stack.spacing = 12
-        stack.edgeInsets = NSEdgeInsets(top: 20, left: 20, bottom: 20, right: 20)
-        window.contentView = stack
-
-        // LSUIElement apps get denied cooperative activation, which leaves
-        // this window unmapped (created but never on screen). Become a
-        // regular app while onboarding is up; drop back to accessory after.
-        NSApp.setActivationPolicy(.regular)
-        window.makeKeyAndOrderFront(nil)
-        window.orderFrontRegardless()
-        NSApp.activate(ignoringOtherApps: true)
-        onboardingWindow = window
-        log.info("onboarding window visible=\(window.isVisible, privacy: .public)")
-    }
-
-    @objc private func openScreenSettings() { Permissions.openScreenRecordingSettings() }
-    @objc private func openAXSettings() { Permissions.openAccessibilitySettings() }
 }
