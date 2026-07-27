@@ -2,6 +2,8 @@
 
 Hover over your MacBook's notch to see the menu bar icons hiding behind it — and click them.
 
+![DropNotch dropping a panel of hidden menu bar icons down from the notch](docs/screenshot.png)
+
 macOS quietly parks overflow menu bar items under and to the left of the notch, where they're invisible and unclickable. DropNotch drops down a translucent panel with live images of those hidden icons; clicking one activates the real status item (its menu opens as if you'd clicked it in the menu bar).
 
 ## Features
