@@ -11,9 +11,17 @@ let package = Package(
             dependencies: ["DropNotchCore"],
             path: "Sources/DropNotch"
         ),
+        // Icon artwork lives outside DropNotchCore: it is build-time tooling
+        // and has no business in the shipping app binary.
+        .target(name: "IconArt", path: "Sources/IconArt"),
+        .executableTarget(
+            name: "IconGen",
+            dependencies: ["IconArt"],
+            path: "Sources/IconGen"
+        ),
         .testTarget(
             name: "DropNotchTests",
-            dependencies: ["DropNotchCore"],
+            dependencies: ["DropNotchCore", "IconArt"],
             path: "Tests/DropNotchTests"
         ),
     ]
