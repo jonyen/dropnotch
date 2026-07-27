@@ -152,6 +152,21 @@ enum PanelStyle {
 
 @MainActor
 public final class NotchPanelController {
+    /// Bottom corner radius, shared by the container and the material so the
+    /// two never disagree mid-resize.
+    static let cornerRadius: CGFloat = 14
+    static let roundedBottomCorners: CACornerMask = [.layerMinXMinYCorner, .layerMaxXMinYCorner]
+
+    /// Clip a layer to the panel's shape: square top, rounded bottom, straight
+    /// sides. A layer corner radius tracks bounds changes exactly, unlike a
+    /// resizable mask image, whose corners distort when stretched.
+    static func applyPanelShape(to layer: CALayer?) {
+        layer?.cornerRadius = cornerRadius
+        layer?.cornerCurve = .continuous
+        layer?.maskedCorners = roundedBottomCorners
+        layer?.masksToBounds = true
+    }
+
     private let panel: NSPanel
     private let model = PanelModel()
     /// Bumped on every show; a hide animation's completion only orders the
@@ -215,10 +230,7 @@ public final class NotchPanelController {
         // siblings so the material's alpha never fades the icons.
         let container = NSView()
         container.wantsLayer = true
-        container.layer?.cornerRadius = 14
-        container.layer?.cornerCurve = .continuous
-        container.layer?.maskedCorners = [.layerMinXMinYCorner, .layerMaxXMinYCorner]
-        container.layer?.masksToBounds = true
+        Self.applyPanelShape(to: container.layer)
 
         let effect = NSVisualEffectView()
         effect.material = PanelStyle.material
@@ -226,6 +238,13 @@ public final class NotchPanelController {
         effect.blendingMode = .behindWindow
         effect.alphaValue = PanelStyle.materialAlpha
         effect.translatesAutoresizingMaskIntoConstraints = false
+        // The container's masksToBounds clips app-drawn content, but a
+        // behind-window backdrop is composited by the window server against
+        // the window shape — so a resize exposes an unclipped strip on the
+        // growing edge, which reads as a square corner until the mask catches
+        // up. Clipping the material's own layer shapes the backdrop directly.
+        effect.wantsLayer = true
+        Self.applyPanelShape(to: effect.layer)
 
         // Tint layer between the material and the icons: carries the sampled
         // menu bar color so the panel matches the real menu bar's hue.
