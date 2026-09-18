@@ -32,15 +32,15 @@ public final class AppCoordinator {
         self.axSource = axSource
         self.capturer = capturer
         self.clickForwarder = ClickForwarder(axSource: axSource)
-        panelController.onItemClick = { [weak self] item in
-            self?.log.debug("panel click: \(item.ownerName, privacy: .public)")
+        panelController.onItemClick = { [weak self] entry in
+            self?.log.debug("panel click: \(entry.info.ownerName, privacy: .public)")
             // Vanish instantly so the item's real menu opens into clear
             // space instead of behind a sliding panel.
             self?.hidePanel(animated: false)
-            self?.clickForwarder.activate(item)
+            self?.clickForwarder.activate(entry.info)
         }
         panelController.onReorder = { [weak self] items in
-            PanelOrder.save(items.map(\.info.ownerName))
+            PanelOrder.save(items.compactMap { $0.info.ownerName })
             self?.lastPanelItems = items
         }
         panelController.onDragToMenuBar = { [weak self] item, target in

@@ -18,12 +18,30 @@ fi
 cp Resources/DropNotch.icns "$APP/Contents/Resources/DropNotch.icns"
 # Prefer a real identity: its designated requirement is stable across
 # rebuilds, so TCC permission grants survive. Ad-hoc (-) resets them
-# on every build. Select by SHA-1 hash and skip any revoked cert — a
-# revoked identity makes Gatekeeper flag the app as malware and trash
-# it, and name-based selection is ambiguous when a stale revoked cert
-# shares its name with the current one.
-IDENTITY=$(security find-identity -v -p codesigning \
-  | grep "Apple Development" | grep -v "CSSMERR" \
-  | head -1 | awk '{print $2}')
-codesign --force --sign "${IDENTITY:--}" "$APP"
-echo "Built $APP (signed: ${IDENTITY:-ad-hoc})"
+# on every build. Select by SHA-1 hash. spctl can't gate candidates —
+# it rejects every non-notarized app, dev-signed included, which
+# silently forced ad-hoc on every build. Instead verify the signed
+# leaf cert over OCSP: `security find-identity` shows locally-revoked
+# certs but not server-revoked ones, and a server-revoked cert makes
+# Gatekeeper kill the app at spawn and trash the bundle (macOS 15.1+).
+# A revoked cert also signs without embedding a chain, so extraction
+# yielding no leaf is itself a rejection.
+SIGNED=false
+CERTDIR=$(mktemp -d)
+trap 'rm -rf "$CERTDIR"' EXIT
+for IDENTITY in $(security find-identity -v -p codesigning \
+  | grep "Apple Development" | grep -v "CSSMERR" | awk '{print $2}'); do
+  rm -f "$CERTDIR"/leaf_*
+  if codesign --force --sign "$IDENTITY" "$APP" 2>/dev/null \
+    && codesign -d --extract-certificates="$CERTDIR/leaf_" "$APP" 2>/dev/null \
+    && [ -f "$CERTDIR/leaf_0" ] \
+    && security verify-cert -c "$CERTDIR/leaf_0" -p codeSign -R ocsp >/dev/null 2>&1; then
+    echo "Built $APP (signed: $IDENTITY)"
+    SIGNED=true
+    break
+  fi
+done
+if [ "$SIGNED" = false ]; then
+  codesign --force --sign - "$APP"
+  echo "Built $APP (signed: ad-hoc — no valid Apple Development cert; TCC grants reset on rebuild)"
+fi

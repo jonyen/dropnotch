@@ -17,7 +17,7 @@ public struct PanelItem: Identifiable {
 @MainActor
 final class PanelModel: ObservableObject {
     @Published var items: [PanelItem] = []
-    var onClick: ((MenuBarItemInfo) -> Void)?
+    var onClick: ((PanelItem) -> Void)?
     var onReorder: (([PanelItem]) -> Void)?
     /// Cmd+drag released up in the menu bar band: move the real item there.
     var onDragToMenuBar: ((MenuBarItemInfo, CGPoint) -> Void)?
@@ -37,7 +37,7 @@ struct NotchPanelView: View {
         HStack(spacing: 8) {
             ForEach(Array(model.items.enumerated()), id: \.element.id) { index, item in
                 let shift = displacement(for: index)
-                IconButton(item: item) { model.onClick?(item.info) }
+                IconButton(item: item) { model.onClick?(item) }
                     .offset(x: shift)
                     .zIndex(dragIndex == index ? 1 : 0)
                     .animation(dragIndex == index ? nil : .easeOut(duration: 0.15), value: shift)
@@ -182,7 +182,7 @@ public final class NotchPanelController {
     /// Carries the sampled menu bar color between material and icons.
     private var tintView: NSView?
 
-    public var onItemClick: ((MenuBarItemInfo) -> Void)? {
+    public var onItemClick: ((PanelItem) -> Void)? {
         get { model.onClick }
         set { model.onClick = newValue }
     }

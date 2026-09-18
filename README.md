@@ -13,14 +13,13 @@ macOS quietly parks overflow menu bar items under and to the left of the notch, 
 - Click forwarding via Accessibility with synthetic-click fallback
 - Tooltips mirror the real items' help text
 - Cmd+drag reorders icons in the panel (live reflow, persisted); releasing a cmd+drag up in the menu bar replays a real cmd+drag on the underlying item — note this only moves items macOS still gives a window (most hidden items have none; the OS destroys them, so there's nothing on screen to drag)
-- Own status item: Pause, Launch at Login (on by default; toggle off sticks), Quit
-- Nothing hidden = no panel
+- Nothing hidden = no panel (and no menu bar icon of its own — on a full menu bar macOS would park it under the notch anyway)
 - Panel never steals focus
 
 ## Requirements
 
 - macOS 14+ (built for a notched MacBook; idles politely without one)
-- Permissions: **Screen Recording** (live icon images) and **Accessibility** (click forwarding). DropNotch never asks at launch — pick **Grant Permissions…** from its menu bar item when you're ready. Without them it still runs, with static app icons and no click forwarding.
+- Permissions: **Screen Recording** (live icon images) and **Accessibility** (click forwarding). DropNotch prompts for both on launch whenever a grant is missing (the prompts show once per app identity; declines re-prompt on the next launch, and ad-hoc rebuilds re-prompt automatically). Without them it still runs, with static app icons and no click forwarding. Quit via `pkill DropNotch`.
 
 ## Build
 
